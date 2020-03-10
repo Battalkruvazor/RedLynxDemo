@@ -19,21 +19,20 @@ class FCModule(nn.Module):
 
         # 8x10 grid and one hot encoded cell state
         obs_size = 8*10*5
-        act_size = 1
 
-        self.input_dim = obs_size + act_size
+        self.input_dim = obs_size
 
         # output is just a scalar value
         self.output_dim = 1
-        self.n_hidden = config.architecture.n_hidden
-        self.hidden_dim = config.architecture.hidden_dim
+        self.n_hidden = config.n_hidden
+        self.hidden_dim = config.hidden_dim
 
         act_fn = nn.ReLU
 
         self.min_val = self.config.min_val
         self.max_val = self.config.max_val
 
-        self.dropout = self.config.architecture.get("dropout", 0.25)
+        self.dropout = self.config.get("dropout", 0.25)
 
         layers = []
         layers.append(nn.Linear(self.input_dim, self.hidden_dim))
@@ -47,8 +46,7 @@ class FCModule(nn.Module):
         self.model = nn.Sequential(*layers)
 
         # Training params:
-        self.lr = config.training.lr
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=config.lr)
+        self.lr = config.lr
         self.loss_fn = F.mse_loss
 
     def forward(self, inputs):
@@ -56,17 +54,17 @@ class FCModule(nn.Module):
 
     def compute_cost(self, inputs, targets):
         pred = self.forward(inputs)
-        return self.loss_fn(pred, targets)
+        return self.loss_fn(pred, targets.unsqueeze(-1))
 
 
-class ForwardModel:
-    def __init__(self, *, config, device, env):
+class ValueModel:
+    def __init__(self, config, device):
         self.config = config
-        self.env = env
         self.device = device
         self.model = FCModule(config).to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
-        self.epochs = self.config.epochs
+        self.epochs = self.config.epochs   
+        self.train_losses = []
 
     def train(self, replay_buffer):
         """Train the forward model
@@ -81,29 +79,29 @@ class ForwardModel:
         """
         self.model.train(True)
 
-        states, moves, values = zip(*replay_buffer)
-        train_losses = []
+        states, _, values = zip(*replay_buffer)
+        
 
         inputs = torch.cat(states, 0)
-        actions = torch.cat(moves, 0)
         targets = torch.cat(values, 0)
 
-        dataset = TensorDataset(inputs, actions, targets)
+        dataset = TensorDataset(inputs, targets)
         data_loader = DataLoader(dataset, batch_size=self.config.batch_size, shuffle=True)
 
         epoch_range = trange(self.epochs, desc="training model", leave=False)
         for _ in epoch_range:
             running_loss = 0
-            for states_batch, actions_batch, targets_batch in data_loader:
-                inp = torch.cat((states_batch, actions_batch), dim=-1)
+            for states_batch, targets_batch in data_loader:
+                # for convenience, later we might want transformations (e.g. for state-action value)
+                inp = states_batch 
                 loss = self.model.compute_cost(inp.to(self.device), targets_batch.to(self.device))
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item()
-            train_losses.append(running_loss)
-            epoch_range.set_postfix({"Loss": np.mean(np.array(train_losses))})
+            self.train_losses.append(running_loss)
+            epoch_range.set_postfix({"Loss": np.mean(np.array(self.train_losses))})
 
         # Optionally, decay the number of epochs
         self.epochs = max(
@@ -111,7 +109,7 @@ class ForwardModel:
             self.config.get("epoch_lower_limit", 5),
         )
 
-        mean_training_loss = np.mean(np.array(train_losses))
+        mean_training_loss = np.mean(np.array(self.train_losses))
         return mean_training_loss
 
 
