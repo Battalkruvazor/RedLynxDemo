@@ -28,28 +28,46 @@ def matching_moves(grid):
 def grid2input(grid,rot = 0):
     return [c for r in grid for s in r for c in one_hot(rotate_cell(s,rot=rot))]
 
-def play_in_place(grid,mv):
+def play_in_place(grid,mv,rand):
     game.Board._move_in_place(grid, mv)
     cont = True
     scr = 0
     while cont:
-        cont, scrt = game.Board._step_impl(grid, random.Random())
+        cont, scrt = game.Board._step_impl(grid, rand)
         scr += scrt
     return scr
 
-def get_best_move(grid, vf=None):
+def get_best_move(grid, rand, vf=None):
     score = -5
     d = random.randint(0,1) 
     move = (random.randint(0, 7 if d else 6), random.randint(0, 8 if d else 9), d)
-    move2 = ()
     moves = matching_moves(grid)
     for mv in moves:
         scr = 0
         for _ in range(10):
             grid_tmp_s = copy.deepcopy(grid)
-            scr += play_in_place(grid_tmp_s,mv)
+            scr += play_in_place(grid_tmp_s,mv,rand)
             if vf:
                 scr += 0.4*vf.model.forward(torch.FloatTensor(grid2input(grid_tmp_s)))
+        #scr/=3.0
+        if scr > score:
+            score = scr
+            move = mv
+
+    #print(scr)
+    return move
+
+def get_best_move_onesample(grid, rand, vf=None):
+    score = -5
+    d = random.randint(0,1) 
+    move = (random.randint(0, 7 if d else 6), random.randint(0, 8 if d else 9), d)
+    moves = matching_moves(grid)
+    for mv in moves:
+        scr = 0        
+        grid_tmp_s = copy.deepcopy(grid)
+        scr += play_in_place(grid_tmp_s,mv,rand)
+        if vf:
+            scr += 0.4*vf.model.forward(torch.FloatTensor(grid2input(grid_tmp_s)))
         #scr/=3.0
         if scr > score:
             score = scr
