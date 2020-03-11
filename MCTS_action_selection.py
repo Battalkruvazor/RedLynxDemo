@@ -24,7 +24,7 @@ class simple_MCS:
         self._root = parse_grid(board_str)
         self._total_sims = 0
         self._move_candidates = []
-        for i,j,vert in matching_moves(self._root):  
+        for i,j,vert in matching_moves(self._root,self._rand):  
             self._move_candidates.append(_MoveCandidate((i,j,vert)))
 
     def _select(self,exploration):

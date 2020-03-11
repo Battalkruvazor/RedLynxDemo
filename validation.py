@@ -93,7 +93,7 @@ if __name__ == "__main__":
         states = [[] for _ in range(4)]
         moves = []
         rewards= []
-        mcs = simple_MCS(nsims = 100, look_ahead = 1, exp_coef = 190, rand = rand)
+        mcs = simple_MCS(nsims = 5, look_ahead = 0, exp_coef = 190, rand = rand)
         gl = game.GameLogic(glseed)
         while not gl.is_gameover():
             #print("step")

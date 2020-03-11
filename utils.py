@@ -15,13 +15,21 @@ def rotate_cell(cell, rot = 1):
     else: 
         return cell
 
-def matching_moves(grid):
+def matches_anything(grid, move,rand):
+        gridprime = copy.deepcopy(grid)
+        if game.Board._move_in_place(gridprime, move):
+            _, sdif = game.Board._step_impl(gridprime, rand)
+            return sdif > 0
+        else:
+            return False
+
+def matching_moves(grid,rand):
     ret = []
     for x in range(8):
         for y in range(10):
             for d in [False, True]:
                 mv = (x, y, d)
-                if game.Board._matches_anything(grid, mv):
+                if matches_anything(grid, mv,rand):
                     ret.append(mv)
     return ret
 
@@ -41,7 +49,7 @@ def get_best_move(grid, rand, vf=None):
     score = -5
     d = random.randint(0,1) 
     move = (random.randint(0, 7 if d else 6), random.randint(0, 8 if d else 9), d)
-    moves = matching_moves(grid)
+    moves = matching_moves(grid,rand)
     for mv in moves:
         scr = 0
         for _ in range(10):
@@ -61,7 +69,7 @@ def get_best_move_onesample(grid, rand, vf=None):
     score = -5
     d = random.randint(0,1) 
     move = (random.randint(0, 7 if d else 6), random.randint(0, 8 if d else 9), d)
-    moves = matching_moves(grid)
+    moves = matching_moves(grid,rand)
     for mv in moves:
         scr = 0        
         grid_tmp_s = copy.deepcopy(grid)
