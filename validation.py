@@ -5,21 +5,23 @@ import random
 
 import game
 from ValueMLP import ValueModel
-from utils import parse_grid, get_best_move, one_hot, rotate_cell, grid2input
+from utils import parse_grid
+from wrappers import get_best_move, model
 from MCTS_action_selection import simple_MCS
 
 # General Parameters
-horizon = 3
-episodes = 500
+horizon = 2
+episodes = 8
 config = Munch({
     'n_hidden': 1,
-    'hidden_dim': 100,
+    'hidden_dim': 6,
     'min_val': -5*horizon,
     'max_val': 100*horizon,
     'dropout': 0.25,
-    'lr': 0.005,
+    'lr': 0.001,
     'epochs': 400,
-    'batch_size': 16,
+    'batch_size': 8,
+    'conv_features' : 16,
 })
 
 seed = 123
@@ -29,8 +31,8 @@ if __name__ == "__main__":
     random.seed(seed)
     torch.manual_seed(seed)
     device = torch.device("cpu")
-    vm_onpolicy = ValueModel(config=config, device = device)
-    vm_onpolicy.load("./",prefix="long_complex_")
+    vm_onpolicy = model(config=config, device = device)
+    vm_onpolicy.load("./",prefix="CNN_")
     vm_onpolicy.model.eval()
 
     # Collect validation data
@@ -52,10 +54,10 @@ if __name__ == "__main__":
             if gl.moves_left() > horizon:
                 # rotated colors
                 for rot in range(4):
-                    states[rot].append(grid2input(grid,rot = rot))
+                    states[rot].append(model.grid2input(grid,rot = rot))
             #print(vm_onpolicy.model.forward(torch.FloatTensor(states[0])).detach().numpy())
             #predicted_values.append(vm_onpolicy.model.forward(torch.FloatTensor(states[0][-1])).detach().numpy())
-            move = get_best_move(grid,rand, (vm_onpolicy if gl.moves_left()>3 else None))
+            move = get_best_move(grid,rand, vf=(vm_onpolicy if gl.moves_left()>3 else None))
             _,sdif,_,_ = gl.play(move)
             rewards.append(sdif)
             if gl.moves_left() > horizon-1:
@@ -79,7 +81,7 @@ if __name__ == "__main__":
             if gl.moves_left() > horizon:
                 # rotated colors
                 for rot in range(4):
-                    states[rot].append(grid2input(grid,rot = rot))
+                    states[rot].append(model.grid2input(grid,rot = rot))
 
             move = get_best_move(grid,rand)
             _,sdif,_,_ = gl.play(move)

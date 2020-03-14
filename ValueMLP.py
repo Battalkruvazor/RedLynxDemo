@@ -7,7 +7,8 @@ import torch.nn.functional as F
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm.autonotebook import trange
-
+from utils import one_hot, rotate_cell
+from game import WIDTH,HEIGHT
 
 class FCModule(nn.Module):
     def __init__(self, config):
@@ -112,6 +113,14 @@ class ValueModel:
         mean_training_loss = np.mean(np.array(self.train_losses))
         return mean_training_loss
 
+    @staticmethod
+    def grid2input(grid, rot=0):
+        res = np.zeros((HEIGHT, WIDTH, 5))
+        for i in range(HEIGHT):
+            for j in range(WIDTH):
+                res[i,j,:] = one_hot(rotate_cell(grid[i][j], rot=rot))
+
+        return res.flatten()
 
     def reset(self):
         """Reset the model

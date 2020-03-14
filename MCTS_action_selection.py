@@ -1,4 +1,5 @@
-from utils import parse_grid, get_best_move_onesample, play_in_place, matching_moves
+from utils import parse_grid
+from wrappers import play_in_place, matching_moves, get_best_move
 import random
 import numpy as np
 import copy
@@ -46,7 +47,7 @@ class simple_MCS:
         grid = copy.deepcopy(self._root)
         scr = play_in_place(grid,move.move,self._rand)
         for _ in range(self._look_ahead):
-            mv = get_best_move_onesample(grid,self._rand)
+            mv = get_best_move(grid,self._rand, num_sample=1)
             scr += play_in_place(grid,mv,self._rand)
         move.visits += 1
         move.total_score += scr
